@@ -1,0 +1,99 @@
+{
+  "evaluate_logic.predict": {
+    "traces": [],
+    "train": [],
+    "demos": [
+      {
+        "augmented": true,
+        "claim_a": "Portfolio rebalancing triggers are evaluated on a fixed quarterly basis.",
+        "claim_b": "Accounts with a declared risk tolerance below 3 on a 10-point scale trigger a mandatory rebalancing review if any single asset class deviates more than 5% from its target allocation, regardless of the quarterly schedule.",
+        "reasoning": "The two claims outline different rebalancing processes, one based on a fixed schedule and the other on asset class performance, allowing for coexistence under varying conditions.",
+        "extracted_entities": "Portfolio rebalancing, asset classes",
+        "extracted_conditions": "Accounts with a declared risk tolerance below 3, any single asset class deviating more than 5% from its target allocation",
+        "extracted_actions": "Claim A: Evaluate portfolio rebalancing triggers quarterly; Claim B: Trigger a mandatory rebalancing review if conditions are met, regardless of quarterly evaluation.",
+        "logical_relationship": "Neutral"
+      },
+      {
+        "augmented": true,
+        "claim_a": "Fixed-rate mortgage early repayment penalties apply to any payment exceeding 20% of the outstanding principal in a single calendar year.",
+        "claim_b": "Borrowers may prepay up to 25% of the original mortgage principal annually without incurring early repayment charges.",
+        "reasoning": "The two claims present different thresholds for prepayment without penalties, leading to a contradiction regarding early repayment rules.",
+        "extracted_entities": "Fixed-rate mortgage, early repayment penalties",
+        "extracted_conditions": "Payments made exceeding 20% of outstanding principal, prepayment of up to 25% of original principal annually",
+        "extracted_actions": "Claim A enforces penalties for payments over 20%, while Claim B permits prepayment up to 25% without penalties.",
+        "logical_relationship": "Contradiction"
+      },
+      {
+        "augmented": true,
+        "claim_a": "Uncomplicated urinary tract infections in non-pregnant adults are treated with a 3-day course of trimethoprim-sulfamethoxazole.",
+        "claim_b": "Standard antibiotic therapy for uncomplicated UTI requires a minimum 7-day treatment course.",
+        "reasoning": "The two claims are in contradiction because claim A states a 3-day treatment for uncomplicated UTIs, while claim B states a required minimum of a 7-day treatment course.",
+        "extracted_entities": "Uncomplicated urinary tract infections, trimethoprim-sulfamethoxazole, antibiotic therapy",
+        "extracted_conditions": "Non-pregnant adults",
+        "extracted_actions": "Claim A mandates a 3-day course of trimethoprim-sulfamethoxazole for treatment, while claim B requires a minimum 7-day treatment course.",
+        "logical_relationship": "Contradiction"
+      },
+      {
+        "augmented": true,
+        "claim_a": "TLS 1.2 is the minimum required encryption protocol for all API endpoints without exception.",
+        "claim_b": "Internal service-to-service API calls within the private VPC may use TLS 1.0 to maintain backward compatibility with legacy microservices.",
+        "reasoning": "The two claims contradict each other because claim A requires TLS 1.2 for all API endpoints, while claim B allows the use of TLS 1.0 for certain internal API calls.",
+        "extracted_entities": "Encryption protocols, API endpoints",
+        "extracted_conditions": "All API endpoints, internal service-to-service API calls within the private VPC",
+        "extracted_actions": "Claim A mandates the use of TLS 1.2 as the minimum encryption protocol; claim B permits the use of TLS 1.0.",
+        "logical_relationship": "Contradiction"
+      },
+      {
+        "augmented": true,
+        "claim_a": "Data subject access requests must be fulfilled within 30 calendar days of receipt.",
+        "claim_b": "GDPR Article 15 access requests are subject to a 45-day response window from the date of verified receipt.",
+        "reasoning": "The two claims present different response timelines for data subject access requests under GDPR, indicating a conflict in the requirements.",
+        "extracted_entities": "Data subject access requests, GDPR Article 15",
+        "extracted_conditions": "Upon receipt of the request",
+        "extracted_actions": "Claim A mandates fulfilling requests within 30 days, while Claim B allows for a response window of 45 days.",
+        "logical_relationship": "Contradiction"
+      }
+    ],
+    "signature": {
+      "instructions": "Evaluate two claims from different enterprise systems. \nStrip away the domain vocabulary and extract the raw entities, conditions, and actions.\nDetermine if the two actions can logically co-exist under the exact same conditions.",
+      "fields": [
+        {
+          "prefix": "Claim A:",
+          "description": "The policy or rule stated by System A"
+        },
+        {
+          "prefix": "Claim B:",
+          "description": "The policy or rule stated by System B"
+        },
+        {
+          "prefix": "Reasoning:",
+          "description": "A one-sentence explanation of the logical proof."
+        },
+        {
+          "prefix": "Extracted Entities:",
+          "description": "What is the core subject? (e.g., Metformin, PTO, Server Access)"
+        },
+        {
+          "prefix": "Extracted Conditions:",
+          "description": "Under what specific conditions do these rules apply? (e.g., eGFR < 30, Friday afternoons)"
+        },
+        {
+          "prefix": "Extracted Actions:",
+          "description": "What actions are mandated or forbidden by each claim?"
+        },
+        {
+          "prefix": "Logical Relationship:",
+          "description": "Must be exactly one of: 'Contradiction', 'Entailment', or 'Neutral'."
+        }
+      ]
+    },
+    "lm": null
+  },
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.13",
+      "dspy": "3.2.1",
+      "cloudpickle": "3.1"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+services:
+  # The Vector Database
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: orqestra_vector_db
+    restart: always
+    environment:
+      POSTGRES_USER: orqestra_admin
+      POSTGRES_PASSWORD: supersecretpassword
+      POSTGRES_DB: orqestra
+    ports:
+      - "5432:5432"
+    volumes:
+      - orqestra_pgdata:/var/lib/postgresql/data
+
+volumes:
+  orqestra_pgdata:
