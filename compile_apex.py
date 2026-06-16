@@ -25,6 +25,12 @@ if not nvidia_nim_key:
     raise ValueError("OPENAI_API_KEY not found in .env")
 
 # Direct OpenAI protocol for gpt-4o-mini
+gpt_5_mini = dspy.LM(
+    model='openai/gpt-5.4-mini', 
+    api_key=openai_key,
+    max_tokens=400
+)
+
 gpt_4o_mini = dspy.LM(
     model='openai/gpt-4o-mini', 
     api_key=openai_key,
@@ -39,7 +45,7 @@ glm5_1 = dspy.LM(
 )
 
 #dspy.settings.configure(cache=False)
-dspy.configure(lm=gpt_4o_mini)
+dspy.configure(lm=gpt_5_mini)
 
 # ==========================================
 # 2. DEFINE THE VALIDATION METRIC
@@ -82,4 +88,4 @@ if __name__ == "__main__":
     compiled_apex.save("models/apex_compiled/optimized_config.json")
     print("💾 Compiled configuration saved to 'models/apex_compiled/optimized_config.json'")
 
-    #gpt_4o_mini.inspect_history(n=1)
+    #gpt_5_mini.inspect_history(n=1)

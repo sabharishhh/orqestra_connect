@@ -15,7 +15,7 @@ if not openai_api_key:
 
 # Note: Added 'openai/' prefix which DSPy 2.x+ prefers for clarity
 llm = dspy.LM(
-    model='openai/gpt-4o-mini', 
+    model='openai/gpt-5.4-mini', 
     api_key=openai_api_key,
     max_tokens=500
 )

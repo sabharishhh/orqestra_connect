@@ -11,7 +11,7 @@ load_dotenv()
 # ==========================================
 # We use GPT-4o-mini here as well to keep things fast and cheap, 
 # but in production, you could swap this to Claude 3.5 Sonnet for elite writing.
-llm = dspy.LM(model='openai/gpt-4o-mini', api_key=os.environ.get("OPENAI_API_KEY"), max_tokens=800)
+llm = dspy.LM(model='openai/gpt-5.4-mini', api_key=os.environ.get("OPENAI_API_KEY"), max_tokens=800)
 
 dspy.settings.configure(cache=False)
 dspy.configure(lm=llm)
