@@ -22,7 +22,7 @@ load_dotenv()
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # Standard Docker PostgreSQL connection string
-DB_URL = "postgresql://orqestra_admin:supersecretpassword@localhost:5432/orqestra"
+DB_URL = "postgresql://orqestra_admin:supersecretpassword@db:5432/orqestra"
 
 def get_embedding(text):
     """Convert text into a 1536-dimensional float array using OpenAI."""

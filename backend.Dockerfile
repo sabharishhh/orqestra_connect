@@ -1,5 +1,5 @@
 
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/li
 COPY pyproject.toml ./
 
 # Install dependencies 
-RUN pip install --no-cache-dir . uvicorn fastapi pydantic
+RUN pip install --default-timeout=1000 --no-cache-dir . uvicorn fastapi pydantic
 
 # Copy the rest of the backend code
 COPY src/ ./src/
