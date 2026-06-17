@@ -26,3 +26,12 @@ backend: http://localhost:8000/docs
 in a parallel terminal:
 
 docker exec -it orqestra_connect-backend-1 python src/scripts/seed_database.py
+
+#Check db:
+
+docker-compose down -v  
+
+docker-compose up --build -d   
+
+
+docker exec -it orqestra_connect-db-1 psql -U orqestra_admin -d orqestra -c "\dt"

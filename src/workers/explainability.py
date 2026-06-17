@@ -1,85 +1,92 @@
-# src/workers/explainability.py
 import os
-import json
+import logging
+import psycopg2
 import dspy
 from dotenv import load_dotenv
+from src.workers.celery_app import celery_app
 
 load_dotenv()
+logger = logging.getLogger("Celery.Explainability")
+DB_URL = os.environ.get("DATABASE_URL", "postgresql://orqestra_admin:supersecretpassword@db:5432/orqestra")
+
+# Configure DSPy inside the worker function to avoid global import lockups
+def _init_dspy():
+    llm = dspy.LM(model='openai/gpt-5.4-mini', api_key=os.environ.get("OPENAI_API_KEY"), max_tokens=800)
+    dspy.settings.configure(cache=False)
+    dspy.configure(lm=llm)
 
 # ==========================================
-# 1. INITIALIZE THE LLM
-# ==========================================
-# We use GPT-4o-mini here as well to keep things fast and cheap, 
-# but in production, you could swap this to Claude 3.5 Sonnet for elite writing.
-llm = dspy.LM(model='openai/gpt-5.4-mini', api_key=os.environ.get("OPENAI_API_KEY"), max_tokens=800)
-
-dspy.settings.configure(cache=False)
-dspy.configure(lm=llm)
-
-
-# ==========================================
-# 2. THE SIGNATURE (The Analyst)
+# THE SIGNATURE (The Analyst)
 # ==========================================
 class ContradictionExplainer(dspy.Signature):
     """
-    You are an enterprise risk analyst. 
-    Review a confirmed policy contradiction between two software systems.
-    Explain the business risk, estimate financial exposure, and recommend a fix.
+    You are an enterprise risk analyst. Review a confirmed policy contradiction between two software systems.
+    Explain the business risk, determine the risk severity, and recommend a fix.
     """
+    system_a_name = dspy.InputField()
     system_a_claim = dspy.InputField()
+    system_b_name = dspy.InputField()
     system_b_claim = dspy.InputField()
     apex_logic_reasoning = dspy.InputField(desc="The formal logical proof of why they contradict")
     
-    business_risk = dspy.OutputField(desc="A 2-sentence plain English explanation of the real-world danger (e.g., malpractice, compliance fines, data loss).")
-    financial_exposure = dspy.OutputField(desc="A rough dollar amount estimate of the liability (e.g., '$50,000 - $250,000 per incident').")
+    business_risk = dspy.OutputField(desc="A 2-sentence plain English explanation of the real-world danger (e.g., malpractice, compliance fines, data loss). Include financial exposure estimates if applicable.")
+    risk_level = dspy.OutputField(desc="Must be exactly one of: LOW, MEDIUM, HIGH, CRITICAL.")
     recommended_action = dspy.OutputField(desc="One sentence on how the engineering/policy team should resolve this.")
+    stale_system_name = dspy.OutputField(desc="The exact name of the system (System A or System B) that appears to be using outdated/legacy rules. If unsure, output 'UNKNOWN'.")
 
 # ==========================================
-# 3. THE CELERY TASK
+# THE CELERY TASK
 # ==========================================
-# @celery_app.task(queue='explainability')
-def process_and_alert(system_a: str, claim_a: str, system_b: str, claim_b: str, reasoning: str):
-    print("🧠 Generating Risk Analysis and Alert Payload...")
+@celery_app.task(name="src.workers.explainability.generate_explanation_task", bind=True)
+def generate_explanation_task(self, contradiction_id: str, sys_a_name: str, claim_a: str, sys_b_name: str, claim_b: str, reasoning: str):
+    logger.info(f"🧠 [EXPLAINER] Generating Risk Analysis for Contradiction {contradiction_id}...")
+    _init_dspy()
     
-    # 1. Run the Explainability Module
-    explainer = dspy.Predict(ContradictionExplainer)
-    analysis = explainer(
-        system_a_claim=claim_a,
-        system_b_claim=claim_b,
-        apex_logic_reasoning=reasoning
-    )
-    
-    # 2. Construct the Slack/UI Payload
-    alert_payload = {
-        "alert_tier": "CRITICAL",
-        "systems_involved": [system_a, system_b],
-        "contradiction_summary": analysis.business_risk,
-        "estimated_exposure": analysis.financial_exposure,
-        "remediation_step": analysis.recommended_action,
-        "raw_claims": {
-            "System A": claim_a,
-            "System B": claim_b
-        }
-    }
-    
-    # 3. "Send" the alert (In production, this is a requests.post() to a Slack Webhook)
-    print("\n" + "="*50)
-    print("🚨 SLACK ALERT DISPATCHED 🚨")
-    print("="*50)
-    print(json.dumps(alert_payload, indent=2))
-    print("="*50 + "\n")
-    
-    return alert_payload
+    try:
+        explainer = dspy.Predict(ContradictionExplainer)
+        analysis = explainer(
+            system_a_name=sys_a_name,
+            system_a_claim=claim_a,
+            system_b_name=sys_b_name,
+            system_b_claim=claim_b,
+            apex_logic_reasoning=reasoning
+        )
+        
+        # 1. Connect to PostgreSQL
+        conn = psycopg2.connect(DB_URL)
+        cur = conn.cursor()
+        
+        # 2. Attempt to resolve the stale system's UUID from the database
+        stale_sys_id = None
+        if analysis.stale_system_name in [sys_a_name, sys_b_name]:
+            cur.execute("SELECT id FROM systems WHERE name = %s;", (analysis.stale_system_name,))
+            result = cur.fetchone()
+            if result:
+                stale_sys_id = result[0]
 
-# ==========================================
-# 4. LIVE PIPELINE TEST
-# ==========================================
-if __name__ == "__main__":
-    # We pass the exact output generated by your Apex engine from the previous step!
-    process_and_alert(
-        system_a="ClinicalGuidelinesAgent",
-        claim_a="Metformin is contraindicated when eGFR falls below 45 mL/min/1.73m².",
-        system_b="MedicationReviewAgent",
-        claim_b="Metformin may be continued at a reduced dose until eGFR drops below 30 mL/min/1.73m².",
-        reasoning="The claims contradict each other regarding the safety of Metformin use at different eGFR thresholds."
-    )
+        # 3. Update the explanation record generated by the Bouncer/Apex
+        cur.execute("""
+            UPDATE explanations 
+            SET why_they_contradict = %s, 
+                risk_level = %s, 
+                recommended_action = %s,
+                likely_stale_system = %s
+            WHERE contradiction_id = %s;
+        """, (
+            analysis.business_risk,
+            analysis.risk_level.upper().strip(),
+            analysis.recommended_action,
+            stale_sys_id,
+            contradiction_id
+        ))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        logger.info(f"✅ [EXPLAINER] Successfully updated DB risk profile for Contradiction {contradiction_id}.")
+        return {"status": "SUCCESS", "contradiction_id": contradiction_id}
+
+    except Exception as e:
+        logger.error(f"❌ [EXPLAINER] Failed to generate explanation: {e}")
+        self.retry(exc=e, countdown=10, max_retries=3)

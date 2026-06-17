@@ -1,6 +1,6 @@
 services:
   db:
-    image: ankane/pgvector:latest
+    image: ankane/pgvector:v0.5.1
     environment:
       POSTGRES_USER: orqestra_admin
       POSTGRES_PASSWORD: supersecretpassword
@@ -8,7 +8,13 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
 
   backend:
     build:
@@ -20,19 +26,49 @@ services:
       - .env
     depends_on:
       - db
-    # Pass the internal Docker DB URL to the backend
+      - redis
     environment:
       - DATABASE_URL=postgresql://orqestra_admin:supersecretpassword@db:5432/orqestra
+      - REDIS_URL=redis://redis:6379/0
+    # LIVE RELOAD: Maps your local src folder to the container's src folder
+    volumes:
+      - ./src:/app/src
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    # LIVE RELOAD + SOLO POOL FIX: Added --pool=solo to prevent PyTorch deadlocks
+    command: watchmedo auto-restart --directory=./src --pattern=*.py --recursive -- celery -A src.workers.celery_app worker --pool=solo --loglevel=info -Q claim_extraction,contradiction_detection,explainability
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://orqestra_admin:supersecretpassword@db:5432/orqestra
+      - REDIS_URL=redis://redis:6379/0
+    # LIVE RELOAD: Maps your local src folder to the container's src folder
+    volumes:
+      - ./src:/app/src
 
   frontend:
     build:
       context: ./frontend
       dockerfile: frontend.Dockerfile
+    # CHANGED: Map Vite's dev port (5173) instead of Nginx's prod port (80)
     ports:
-      # Map your local 5173 port to the Nginx port 80
-      - "5173:80" 
+      - "5173:5173" 
     depends_on:
       - backend
+    # CHANGED: Force Vite to start the development server and listen to all network traffic
+    command: npm run dev -- --host 0.0.0.0
+    # ADDED: Live Volume Mounts for React
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      # VERY IMPORTANT TRAP: This prevents your Mac/Windows node_modules from overwriting the Linux ones!
+      - /app/node_modules 
 
 volumes:
-  pgdata:
+  db_data:

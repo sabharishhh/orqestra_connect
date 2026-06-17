@@ -1,0 +1,12 @@
+[
+  {
+    "id": "HC-001",
+    "patient_profile": "Age: 68. Condition: Type 2 Diabetes. Current Meds: Metformin 1000mg BID. Recent Labs: eGFR is 38 mL/min (Declining).",
+    "question": "Based on the recent eGFR drop to 38 mL/min, what is the immediate required action regarding the patient's Metformin prescription?"
+  },
+  {
+    "id": "HC-004",
+    "patient_profile": "Age: 55. Scheduled for an MRI with iodine contrast tomorrow. Currently taking Metformin.",
+    "question": "What are the pre-procedure requirements for this patient's Metformin dosage?"
+  }
+]
